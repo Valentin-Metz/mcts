@@ -3,7 +3,7 @@ use std::io;
 use mcts::connect_four::Player::{Player1, Player2};
 use mcts::connect_four::*;
 
-use crate::GameEnd::{Draw, Win};
+use crate::GameResult::{Draw, Win};
 
 fn main() {
     let game_result = play_game();
@@ -19,7 +19,12 @@ fn main() {
     }
 }
 
-fn play_game() -> GameEnd {
+/// Plays until:
+/// A: A player has won
+/// B: An invalid move is made by a player (the opponent wins in this case)
+/// C: A draw is reached (the board is full)
+/// Returns the GameResult.
+fn play_game() -> GameResult {
     print!("{}", ansi_escapes::ClearScreen);
 
     let mut current_player = Player1;
@@ -77,7 +82,7 @@ fn play_game() -> GameEnd {
     }
 }
 
-enum GameEnd {
+enum GameResult {
     Draw,
     Win(Player),
 }

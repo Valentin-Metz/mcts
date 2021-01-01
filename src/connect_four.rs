@@ -3,11 +3,15 @@ use std::fmt::Formatter;
 
 use colored::*;
 
+/// GameBoard - implemented as a 2D struct array.
+/// A field can be empty (None) - or occupied by one of tho two players (Some(Player)).
+/// Default size is 7 long (indexed by x); 6 high (indexed by y).
 #[derive(Default, Debug)]
 pub struct GameBoard {
     board: [[Option<Player>; 7]; 6],
 }
 
+/// Pretty prints the GameBoard. Uses ANSI-Escape-Codes for color and in-place prints.
 impl std::fmt::Display for GameBoard {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         writeln!(f, "| 0 | 1 | 2 | 3 | 4 | 5 | 6 |\n")?;
@@ -49,14 +53,22 @@ impl GameBoard {
         )
     }
 
+    /// Returns a single square of our GameBoard.
     pub fn get_field(&self, coordinate: Coordinate) -> Option<Player> {
         self.board[coordinate.y][coordinate.x]
     }
 
+    /// Places a stone from player p at a specific coordinate.
+    /// Coordinate must be valid.
     pub fn place_stone(&mut self, player: Player, coordinate: Coordinate) {
         self.board[coordinate.y][coordinate.x] = Some(player);
     }
 
+    /// Drops a stone into a specified column (from the top).
+    /// If the coordinate is invalid, None will be returned.
+    /// If the coordinate is valid, the returned value indicates:
+    /// A: The current player has won after this move (Some(true)).
+    /// B: The game goes on (Some(false)) - (this includes a potential draw).
     pub fn drop_stone(&mut self, player: Player, x_position: usize) -> Option<bool> {
         if x_position >= self.get_dimensions().1 {
             return None;
@@ -76,6 +88,7 @@ impl GameBoard {
         None
     }
 
+    /// Checks if no further stones can be placed on the board.
     pub fn check_draw(&self) -> bool {
         self.board
             .last()
@@ -83,6 +96,9 @@ impl GameBoard {
             .unwrap_or(true)
     }
 
+    /// Checks on four stones in sequence.
+    /// Only the coordinates around the origin are evaluated.
+    /// Directional movement is performed by stepping functions.
     pub fn check_win(&self, player: Player, coordinate: Coordinate) -> bool {
         let left_right = |c: Coordinate| Coordinate {
             y: c.y,
@@ -92,37 +108,51 @@ impl GameBoard {
             y: c.y,
             x: c.x.wrapping_sub(1),
         };
-        let bl_tr = |c: Coordinate| Coordinate {
+        let bottom_left_top_right = |c: Coordinate| Coordinate {
             y: c.y.wrapping_add(1),
             x: c.x.wrapping_add(1),
         };
-        let tr_bl = |c: Coordinate| Coordinate {
+        let top_right_bottom_left = |c: Coordinate| Coordinate {
             y: c.y.wrapping_sub(1),
             x: c.x.wrapping_sub(1),
         };
-        let tl_br = |c: Coordinate| Coordinate {
+        let top_left_bottom_right = |c: Coordinate| Coordinate {
             y: c.y.wrapping_sub(1),
             x: c.x.wrapping_add(1),
         };
-        let br_tl = |c: Coordinate| Coordinate {
+        let bottom_right_top_left = |c: Coordinate| Coordinate {
             y: c.y.wrapping_add(1),
             x: c.x.wrapping_sub(1),
         };
-        let top_bot = |c: Coordinate| Coordinate {
+        // Only needed in one direction (As no stone can be above a newly inserted one)
+        let top_to_bottom = |c: Coordinate| Coordinate {
             y: c.y.wrapping_sub(1),
             x: c.x,
-        }; // Only needed in one direction
+        };
+
         self.count_in_sequence(player, coordinate, left_right, right_left) >= 4
-            || self.count_in_sequence(player, coordinate, bl_tr, tr_bl) >= 4
-            || self.count_in_sequence(player, coordinate, tl_br, br_tl) >= 4
+            || self.count_in_sequence(
+                player,
+                coordinate,
+                bottom_left_top_right,
+                top_right_bottom_left,
+            ) >= 4
+            || self.count_in_sequence(
+                player,
+                coordinate,
+                top_left_bottom_right,
+                bottom_right_top_left,
+            ) >= 4
             || self
-                .iterate_by_function(top_bot(coordinate), top_bot)
+                .iterate_by_function(top_to_bottom(coordinate), top_to_bottom)
                 .take_while(|o| *o == Some(player))
                 .count()
                 + 1
                 >= 4
     }
 
+    /// Takes two stepping functions in opposite directions.
+    /// Combines the length of found stones is sequence.
     fn count_in_sequence(
         &self,
         player: Player,
@@ -140,6 +170,7 @@ impl GameBoard {
                 .count()
     }
 
+    /// Generates an iterator of fields from a stepping function.
     fn iterate_by_function<'a>(
         &'a self,
         mut coordinate: Coordinate,
