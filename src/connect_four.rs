@@ -5,7 +5,7 @@ use colored::*;
 
 #[derive(Default, Debug)]
 pub struct GameBoard {
-    board: [[Option<Owner>; 7]; 6],
+    board: [[Option<Player>; 7]; 6],
 }
 
 impl std::fmt::Display for GameBoard {
@@ -18,10 +18,10 @@ impl std::fmt::Display for GameBoard {
                     None => {
                         write!(f, "   |")?;
                     }
-                    Some(Owner::Player1) => {
+                    Some(Player::Player1) => {
                         write!(f, " {} |", "X".red())?;
                     }
-                    Some(Owner::Player2) => {
+                    Some(Player::Player2) => {
                         write!(f, " {} |", "O".blue())?;
                     }
                 }
@@ -49,23 +49,23 @@ impl GameBoard {
         )
     }
 
-    pub fn get_field(&self, coordinate: Coordinate) -> Option<Owner> {
+    pub fn get_field(&self, coordinate: Coordinate) -> Option<Player> {
         self.board[coordinate.y][coordinate.x]
     }
 
-    pub fn place_stone(&mut self, owner: Owner, coordinate: Coordinate) {
-        self.board[coordinate.y][coordinate.x] = Some(owner);
+    pub fn place_stone(&mut self, player: Player, coordinate: Coordinate) {
+        self.board[coordinate.y][coordinate.x] = Some(player);
     }
 
-    pub fn drop_stone(&mut self, owner: Owner, x_position: usize) -> Option<bool> {
+    pub fn drop_stone(&mut self, player: Player, x_position: usize) -> Option<bool> {
         if x_position >= self.get_dimensions().1 {
             return None;
         }
         for i in 0..self.board.len() {
             if self.board[i][x_position].is_none() {
-                self.board[i][x_position] = Some(owner);
+                self.board[i][x_position] = Some(player);
                 return Some(self.check_win(
-                    owner,
+                    player,
                     Coordinate {
                         y: i,
                         x: x_position,
@@ -76,7 +76,14 @@ impl GameBoard {
         None
     }
 
-    pub fn check_win(&self, owner: Owner, coordinate: Coordinate) -> bool {
+    pub fn check_draw(&self) -> bool {
+        self.board
+            .last()
+            .and_then(|row| Some(row.iter().filter(|cell| cell.is_some()).count() == row.len()))
+            .unwrap_or(true)
+    }
+
+    pub fn check_win(&self, player: Player, coordinate: Coordinate) -> bool {
         let left_right = |c: Coordinate| Coordinate {
             y: c.y,
             x: c.x.wrapping_add(1),
@@ -105,12 +112,12 @@ impl GameBoard {
             y: c.y.wrapping_sub(1),
             x: c.x,
         }; // Only needed in one direction
-        self.count_in_sequence(owner, coordinate, left_right, right_left) >= 4
-            || self.count_in_sequence(owner, coordinate, bl_tr, tr_bl) >= 4
-            || self.count_in_sequence(owner, coordinate, tl_br, br_tl) >= 4
+        self.count_in_sequence(player, coordinate, left_right, right_left) >= 4
+            || self.count_in_sequence(player, coordinate, bl_tr, tr_bl) >= 4
+            || self.count_in_sequence(player, coordinate, tl_br, br_tl) >= 4
             || self
                 .iterate_by_function(top_bot(coordinate), top_bot)
-                .take_while(|o| *o == Some(owner))
+                .take_while(|o| *o == Some(player))
                 .count()
                 + 1
                 >= 4
@@ -118,18 +125,18 @@ impl GameBoard {
 
     fn count_in_sequence(
         &self,
-        owner: Owner,
+        player: Player,
         coordinate: Coordinate,
         f1: impl Fn(Coordinate) -> Coordinate,
         f2: impl Fn(Coordinate) -> Coordinate,
     ) -> usize {
         1 + self
             .iterate_by_function(f1(coordinate), f1)
-            .take_while(|o| *o == Some(owner))
+            .take_while(|o| *o == Some(player))
             .count()
             + self
                 .iterate_by_function(f2(coordinate), f2)
-                .take_while(|o| *o == Some(owner))
+                .take_while(|o| *o == Some(player))
                 .count()
     }
 
@@ -137,7 +144,7 @@ impl GameBoard {
         &'a self,
         mut coordinate: Coordinate,
         modification_function: impl Fn(Coordinate) -> Coordinate + 'a,
-    ) -> impl Iterator<Item = Option<Owner>> + 'a {
+    ) -> impl Iterator<Item = Option<Player>> + 'a {
         std::iter::from_fn(move || {
             return match self
                 .board
@@ -145,9 +152,9 @@ impl GameBoard {
                 .and_then(|y| y.get(coordinate.x))
             {
                 None => None,
-                Some(owner) => {
+                Some(player) => {
                     coordinate = modification_function(coordinate);
-                    Some(*owner)
+                    Some(*player)
                 }
             };
         })
@@ -155,16 +162,16 @@ impl GameBoard {
 }
 
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
-pub enum Owner {
+pub enum Player {
     Player1,
     Player2,
 }
 
-impl fmt::Display for Owner {
+impl fmt::Display for Player {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         match self {
-            Owner::Player1 => write!(f, "Player 1"),
-            Owner::Player2 => write!(f, "Player 2"),
+            Player::Player1 => write!(f, "Player 1"),
+            Player::Player2 => write!(f, "Player 2"),
         }
     }
 }

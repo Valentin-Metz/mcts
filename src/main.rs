@@ -1,17 +1,36 @@
 use std::io;
 
-use mcts::connect_four::Owner::{Player1, Player2};
+use mcts::connect_four::Player::{Player1, Player2};
 use mcts::connect_four::*;
 
+use crate::GameEnd::{Draw, Win};
+
 fn main() {
+    let game_result = play_game();
+    println!();
+    match game_result {
+        Draw => {
+            println!("Draw!")
+        }
+        Win(player) => {
+            println!("{} wins!", player);
+            println!("Excellent!");
+        }
+    }
+}
+
+fn play_game() -> GameEnd {
     print!("{}", ansi_escapes::ClearScreen);
 
-    let mut player = Player1;
+    let mut current_player = Player1;
     let mut gb = GameBoard::default();
 
     loop {
-        print!("{}", gb);
-        println!("{}, please select a column", player);
+        println!("{}", gb);
+        if gb.check_draw() {
+            return Draw;
+        }
+        println!("{}, please select a column", current_player);
 
         let mut input = String::new();
         io::stdin()
@@ -19,43 +38,46 @@ fn main() {
             .expect("Failed to read user input!");
 
         match input.trim().parse() {
-            Ok(position) => match gb.drop_stone(player, position) {
+            Ok(position) => match gb.drop_stone(current_player, position) {
+                // Invalid move by player
                 None => {
-                    print!(
-                        "{}",
-                        ansi_escapes::EraseLines((gb.get_dimensions().0 + 5) as u16)
-                    );
                     println!(
                         "Invalid move ({}) by {}! - The other player wins!",
-                        position, player
+                        position, current_player
                     );
-                    match player {
-                        Player1 => player = Player2,
-                        Player2 => player = Player1,
+                    return match current_player {
+                        Player1 => Win(Player2),
+                        Player2 => Win(Player1),
                     };
-                    break;
                 }
-                Some(false) => match player {
-                    Player1 => player = Player2,
-                    Player2 => player = Player1,
-                },
-                Some(true) => {
+                // A valid move, but no victory
+                Some(false) => {
                     print!(
                         "{}",
-                        ansi_escapes::EraseLines((gb.get_dimensions().0 + 5) as u16)
+                        ansi_escapes::EraseLines((gb.get_dimensions().0 + 6) as u16)
                     );
-                    break;
+                    match current_player {
+                        Player1 => current_player = Player2,
+                        Player2 => current_player = Player1,
+                    }
+                    continue;
+                }
+                // Victory by the current player
+                Some(true) => {
+                    print!(
+                        "{}{}",
+                        ansi_escapes::EraseLines((gb.get_dimensions().0 + 6) as u16),
+                        gb
+                    );
+                    return Win(current_player);
                 }
             },
-            Err(_) => {}
+            Err(_) => continue,
         };
-        print!(
-            "{}",
-            ansi_escapes::EraseLines((gb.get_dimensions().0 + 5) as u16)
-        );
     }
+}
 
-    print!("{}", gb);
-    println!("{} wins!", player);
-    println!("Excellent!");
+enum GameEnd {
+    Draw,
+    Win(Player),
 }
