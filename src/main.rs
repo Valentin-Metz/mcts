@@ -1,7 +1,7 @@
 use std::io;
 
-use mcts::connect_four_board::Owner::{Player1, Player2};
-use mcts::connect_four_board::*;
+use mcts::connect_four::Owner::{Player1, Player2};
+use mcts::connect_four::*;
 
 fn main() {
     print!("{}", ansi_escapes::ClearScreen);
@@ -21,15 +21,18 @@ fn main() {
         match input.trim().parse() {
             Ok(position) => match gb.drop_stone(player, position) {
                 None => {
-                    match player {
-                        Player1 => player = Player2,
-                        Player2 => player = Player1,
-                    };
                     print!(
                         "{}",
                         ansi_escapes::EraseLines((gb.get_dimensions().0 + 5) as u16)
                     );
-                    println!("Invalid move ({})! - The other player wins!", position);
+                    println!(
+                        "Invalid move ({}) by {}! - The other player wins!",
+                        position, player
+                    );
+                    match player {
+                        Player1 => player = Player2,
+                        Player2 => player = Player1,
+                    };
                     break;
                 }
                 Some(false) => match player {
