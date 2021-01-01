@@ -77,7 +77,14 @@ fn play_game() -> GameResult {
                     return Win(current_player);
                 }
             },
-            Err(_) => continue,
+            // Input is invalid; retry
+            Err(_) => {
+                print!(
+                    "{}",
+                    ansi_escapes::EraseLines((gb.get_dimensions().0 + 6) as u16)
+                );
+                continue;
+            }
         };
     }
 }
