@@ -87,40 +87,29 @@ impl GameBoard {
     /// If the coordinate is valid, the returned value indicates:
     /// A: The current player has won after this move (Some(true)).
     /// B: The game goes on (Some(false)) - (this includes a potential draw).
-    pub fn drop_stone(&mut self, player: Player, game_move: GameMove) -> Option<bool> {
-        if game_move.x >= self.get_dimensions().1 {
-            return None;
-        }
+    pub fn drop_stone(&mut self, player: Player, game_move: GameMove) {
         for i in 0..self.board.len() {
             if self.board[i][game_move.x].is_none() {
                 self.board[i][game_move.x] = Some(player);
-                let result = Some(self.check_win(
+                if self.check_win(
                     player,
                     Coordinate {
                         y: i,
                         x: game_move.x,
                     },
-                ));
-                return match result {
-                    None => None,
-                    Some(true) => {
-                        self.game_state = GameState::GameResult(GameResult::Win(player));
-                        Some(true)
-                    }
-                    Some(false) => {
-                        if self.check_draw() {
-                            self.game_state = GameState::GameResult(Draw)
-                        }
-                        Some(false)
-                    }
-                };
+                ) {
+                    self.game_state = GameState::GameResult(GameResult::Win(player));
+                } else if self.check_draw() {
+                    self.game_state = GameState::GameResult(Draw)
+                }
+                return;
             }
         }
-        None
+        unreachable!();
     }
 
     /// Checks if no further stones can be placed on the board.
-    pub fn check_draw(&self) -> bool {
+    fn check_draw(&self) -> bool {
         self.board
             .last()
             .and_then(|row| Some(row.iter().filter(|cell| cell.is_some()).count() == row.len()))
@@ -269,7 +258,7 @@ pub struct Coordinate {
     x: usize,
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub struct GameMove {
     x: usize,
 }

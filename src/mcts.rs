@@ -30,15 +30,27 @@ impl std::fmt::Display for Node {
 }
 
 impl Node {
-    pub fn new(player: Player) -> Node {
+    pub fn new(current_player: Player, game_board: GameBoard) -> Node {
         Node {
-            game_board: GameBoard::default(),
-            current_player: player,
+            game_board,
+            current_player,
             game_move: None,
             sample_count: 0,
             children: vec![],
             weight: 0.0,
         }
+    }
+
+    pub fn get_board(&self) -> &GameBoard {
+        &self.game_board
+    }
+
+    pub fn make_move(mut self, game_move: GameMove) -> Option<Node> {
+        self.mcts();
+        self.mcts();
+        self.children
+            .into_iter()
+            .find(|n| n.game_move == Some(game_move))
     }
 
     pub fn mcts(&mut self) -> f64 {
@@ -79,12 +91,14 @@ impl Node {
         result
     }
 
-    pub fn best_move(&self) -> GameMove {
+    pub fn best_move(&mut self) -> GameMove {
+        self.mcts();
+        self.mcts();
         self.children
             .iter()
             .max_by(|c1, c2| {
-                c1.calculate_uct(self.sample_count as f64)
-                    .total_cmp(&c2.calculate_uct(self.sample_count as f64))
+                (c1.weight / c1.sample_count as f64)
+                    .total_cmp(&(c2.weight / c2.sample_count as f64))
             })
             .unwrap()
             .game_move
@@ -96,7 +110,7 @@ impl Node {
             return INFINITY;
         }
         self.weight / (self.sample_count as f64)
-            + 5.0 * SQRT_2 * (parent_sample_count.ln() / (self.sample_count as f64)).sqrt()
+            + SQRT_2 * (parent_sample_count.ln() / (self.sample_count as f64)).sqrt()
     }
 
     fn generate_children(&self) -> Vec<Node> {
