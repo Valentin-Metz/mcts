@@ -3,12 +3,18 @@ use std::fmt::Formatter;
 
 use colored::*;
 
+use crate::connect_four::GameResult::Draw;
+use crate::connect_four::GameState::Ongoing;
+use crate::connect_four::Player::{Player1, Player2};
+use rand::{thread_rng, Rng};
+
 /// GameBoard - implemented as a 2D struct array.
 /// A field can be empty (None) - or occupied by one of tho two players (Some(Player)).
 /// Default size is 7 long (indexed by x); 6 high (indexed by y).
-#[derive(Default, Debug)]
+#[derive(Debug, Copy, Clone)]
 pub struct GameBoard {
     board: [[Option<Player>; 7]; 6],
+    game_state: GameState,
 }
 
 /// Pretty prints the GameBoard. Uses ANSI-Escape-Codes for color and in-place prints.
@@ -40,7 +46,25 @@ impl GameBoard {
     pub fn new() -> GameBoard {
         GameBoard {
             board: [[None; 7]; 6],
+            game_state: GameState::Ongoing,
         }
+    }
+    pub fn default() -> GameBoard {
+        GameBoard::new()
+    }
+
+    pub fn get_game_state(&self) -> GameState {
+        self.game_state
+    }
+
+    pub fn get_possible_moves<'a>(&'a self) -> impl Iterator<Item = GameMove> + 'a {
+        self.board
+            .last()
+            .unwrap()
+            .iter()
+            .enumerate()
+            .filter(|(_, cell)| cell.is_none())
+            .map(|(m, _)| GameMove::new(m))
     }
 
     pub fn get_dimensions(&self) -> (usize, usize) {
@@ -58,31 +82,38 @@ impl GameBoard {
         self.board[coordinate.y][coordinate.x]
     }
 
-    /// Places a stone from player p at a specific coordinate.
-    /// Coordinate must be valid.
-    pub fn place_stone(&mut self, player: Player, coordinate: Coordinate) {
-        self.board[coordinate.y][coordinate.x] = Some(player);
-    }
-
     /// Drops a stone into a specified column (from the top).
     /// If the coordinate is invalid, None will be returned.
     /// If the coordinate is valid, the returned value indicates:
     /// A: The current player has won after this move (Some(true)).
     /// B: The game goes on (Some(false)) - (this includes a potential draw).
-    pub fn drop_stone(&mut self, player: Player, x_position: usize) -> Option<bool> {
-        if x_position >= self.get_dimensions().1 {
+    pub fn drop_stone(&mut self, player: Player, game_move: GameMove) -> Option<bool> {
+        if game_move.x >= self.get_dimensions().1 {
             return None;
         }
         for i in 0..self.board.len() {
-            if self.board[i][x_position].is_none() {
-                self.board[i][x_position] = Some(player);
-                return Some(self.check_win(
+            if self.board[i][game_move.x].is_none() {
+                self.board[i][game_move.x] = Some(player);
+                let result = Some(self.check_win(
                     player,
                     Coordinate {
                         y: i,
-                        x: x_position,
+                        x: game_move.x,
                     },
                 ));
+                return match result {
+                    None => None,
+                    Some(true) => {
+                        self.game_state = GameState::GameResult(GameResult::Win(player));
+                        Some(true)
+                    }
+                    Some(false) => {
+                        if self.check_draw() {
+                            self.game_state = GameState::GameResult(Draw)
+                        }
+                        Some(false)
+                    }
+                };
             }
         }
         None
@@ -190,6 +221,31 @@ impl GameBoard {
             };
         })
     }
+
+    pub fn random_simulation(&self, player: Player) -> f64 {
+        let mut current_player = player;
+        let mut simulation_board = self.clone();
+
+        while simulation_board.get_game_state() == Ongoing {
+            let target_position = simulation_board
+                .get_possible_moves()
+                .nth(thread_rng().gen_range(0..simulation_board.get_possible_moves().count()))
+                .unwrap();
+            simulation_board.drop_stone(current_player, target_position);
+            match current_player {
+                Player::Player1 => current_player = Player2,
+                Player::Player2 => current_player = Player1,
+            }
+        }
+        return match simulation_board.get_game_state() {
+            GameState::GameResult(Draw) => 0.0,
+            GameState::GameResult(GameResult::Win(Player1)) => 1.0,
+            GameState::GameResult(GameResult::Win(Player2)) => -1.0,
+            Ongoing => {
+                unreachable!();
+            }
+        };
+    }
 }
 
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
@@ -211,4 +267,27 @@ impl fmt::Display for Player {
 pub struct Coordinate {
     y: usize,
     x: usize,
+}
+
+#[derive(Debug, Copy, Clone)]
+pub struct GameMove {
+    x: usize,
+}
+
+impl GameMove {
+    pub fn new(position: usize) -> GameMove {
+        GameMove { x: position }
+    }
+}
+
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
+pub enum GameState {
+    Ongoing,
+    GameResult(GameResult),
+}
+
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
+pub enum GameResult {
+    Draw,
+    Win(Player),
 }

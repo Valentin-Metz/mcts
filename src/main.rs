@@ -1,11 +1,20 @@
 use std::io;
 
+use mcts::connect_four::GameResult::{Draw, Win};
 use mcts::connect_four::Player::{Player1, Player2};
 use mcts::connect_four::*;
-
-use crate::GameResult::{Draw, Win};
+use mcts::mcts::Node;
 
 fn main() {
+    let mut root = Node::new(Player1);
+    for _ in 0..1000000_u64 {
+        root.mcts();
+    }
+    println!("{}", root);
+    //println!("{:?}", start);
+}
+
+fn two_players() {
     let game_result = play_game();
     println!();
     match game_result {
@@ -24,7 +33,7 @@ fn main() {
 /// B: An invalid move is made by a player (the opponent wins in this case)
 /// C: A draw is reached (the board is full)
 /// Returns the GameResult.
-fn play_game() -> GameResult {
+fn play_game() -> mcts::connect_four::GameResult {
     print!("{}", ansi_escapes::ClearScreen);
 
     let mut current_player = Player1;
@@ -43,7 +52,7 @@ fn play_game() -> GameResult {
             .expect("Failed to read user input!");
 
         match input.trim().parse() {
-            Ok(position) => match gb.drop_stone(current_player, position) {
+            Ok(position) => match gb.drop_stone(current_player, GameMove::new(position)) {
                 // Invalid move by player
                 None => {
                     println!(
@@ -87,9 +96,4 @@ fn play_game() -> GameResult {
             }
         };
     }
-}
-
-enum GameResult {
-    Draw,
-    Win(Player),
 }
