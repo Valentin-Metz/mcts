@@ -211,7 +211,7 @@ impl GameBoard {
         })
     }
 
-    pub fn random_simulation(&self, player: Player) -> f64 {
+    pub fn random_simulation(&self, player: Player) -> GameResult {
         let mut current_player = player;
         let mut simulation_board = self.clone();
 
@@ -227,9 +227,7 @@ impl GameBoard {
             }
         }
         return match simulation_board.get_game_state() {
-            GameState::GameResult(Draw) => 0.0,
-            GameState::GameResult(GameResult::Win(Player1)) => 1.0,
-            GameState::GameResult(GameResult::Win(Player2)) => -1.0,
+            GameState::GameResult(result) => result,
             Ongoing => {
                 unreachable!();
             }

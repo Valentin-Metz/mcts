@@ -55,13 +55,14 @@ fn prepare_game() {
 /// Returns the GameResult.
 fn play_game(player_position: Option<Player>) -> mcts::connect_four::GameResult {
     let mut current_player = Player1;
-    let mut game_state = Node::new(Player1, GameBoard::default());
+    let mut game_state = Node::new(GameBoard::default(), Player1);
 
     while let GameState::Ongoing = game_state.get_board().get_game_state() {
         print!("{}", ansi_escapes::ClearScreen);
         println!("{}", game_state.get_board());
 
         if player_position == None || player_position == Some(current_player) {
+            println!("Input your move:");
             let mut input = String::new();
             io::stdin()
                 .read_line(&mut input)
@@ -86,7 +87,7 @@ fn play_game(player_position: Option<Player>) -> mcts::connect_four::GameResult 
                 Err(_) => continue,
             }
         } else {
-            for _ in 0..1000000000 {
+            for _ in 0..10000000 {
                 game_state.mcts();
             }
             let best_move = game_state.best_move();

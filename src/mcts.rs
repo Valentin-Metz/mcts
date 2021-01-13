@@ -19,10 +19,11 @@ impl std::fmt::Display for Node {
         for c in &self.children {
             writeln!(
                 f,
-                "{:?}: {} - {}",
+                "{:?}: {} - {} {}",
                 c.game_move,
                 c.calculate_uct(self.sample_count as f64),
                 c.sample_count,
+                c.weight,
             )?;
         }
         writeln!(f, "")
@@ -30,7 +31,7 @@ impl std::fmt::Display for Node {
 }
 
 impl Node {
-    pub fn new(current_player: Player, game_board: GameBoard) -> Node {
+    pub fn new(game_board: GameBoard, current_player: Player) -> Node {
         Node {
             game_board,
             current_player,
@@ -53,8 +54,8 @@ impl Node {
             .find(|n| n.game_move == Some(game_move))
     }
 
-    pub fn mcts(&mut self) -> f64 {
-        let result: f64;
+    pub fn mcts(&mut self) -> GameResult {
+        let result: GameResult;
         if self.children.is_empty() {
             match self.game_board.get_game_state() {
                 GameState::Ongoing => {
@@ -67,11 +68,7 @@ impl Node {
                     }
                 }
                 GameState::GameResult(r) => {
-                    result = match r {
-                        GameResult::Draw => 0.0,
-                        GameResult::Win(Player1) => 1.0,
-                        GameResult::Win(Player2) => -1.0,
-                    };
+                    result = r;
                 }
             }
         } else {
@@ -87,7 +84,11 @@ impl Node {
             result = best_child.mcts();
         }
         self.sample_count += 1;
-        self.weight += result;
+        match result {
+            GameResult::Draw => self.weight += 0.5,
+            GameResult::Win(p) if p != self.current_player => self.weight += 1.0,
+            _ => {}
+        }
         result
     }
 
@@ -96,10 +97,7 @@ impl Node {
         self.mcts();
         self.children
             .iter()
-            .max_by(|c1, c2| {
-                (c1.weight / c1.sample_count as f64)
-                    .total_cmp(&(c2.weight / c2.sample_count as f64))
-            })
+            .max_by_key(|c| c.sample_count)
             .unwrap()
             .game_move
             .unwrap()
@@ -110,7 +108,7 @@ impl Node {
             return INFINITY;
         }
         self.weight / (self.sample_count as f64)
-            + SQRT_2 * (parent_sample_count.ln() / (self.sample_count as f64)).sqrt()
+            + SQRT_2 * ((parent_sample_count.ln() / (self.sample_count as f64)).sqrt())
     }
 
     fn generate_children(&self) -> Vec<Node> {
