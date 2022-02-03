@@ -1,7 +1,6 @@
 use crate::connect_four::Player::{Player1, Player2};
 use crate::connect_four::{GameBoard, GameMove, GameResult, GameState, Player};
 use std::f64::consts::SQRT_2;
-use std::f64::INFINITY;
 use std::fmt::Formatter;
 
 #[derive(Debug)]
@@ -105,7 +104,7 @@ impl Node {
 
     fn calculate_uct(&self, parent_sample_count: f64) -> f64 {
         if self.sample_count == 0 {
-            return INFINITY;
+            return f64::INFINITY;
         }
         self.weight / (self.sample_count as f64)
             + SQRT_2 * ((parent_sample_count.ln() / (self.sample_count as f64)).sqrt())
