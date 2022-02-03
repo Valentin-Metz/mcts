@@ -85,7 +85,7 @@ impl Node {
         }
         self.sample_count += 1;
         match result {
-            GameResult::Draw => self.weight += 0.5,
+            GameResult::Draw => self.weight += 0.0,
             GameResult::Win(p) if p != self.current_player => self.weight += 1.0,
             _ => {}
         }

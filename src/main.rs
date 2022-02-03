@@ -87,7 +87,7 @@ fn play_game(player_position: Option<Player>) -> mcts::connect_four::GameResult 
                 Err(_) => continue,
             }
         } else {
-            for _ in 0..10000000 {
+            for _ in 0..1000000 {
                 game_state.mcts();
             }
             let best_move = game_state.best_move();
