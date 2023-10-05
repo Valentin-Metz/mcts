@@ -11,7 +11,7 @@ to search and learn optimal moves in self-play at **runtime**.
 
 Monte Carlo search trees provide the foundation for more sophisticated reinforcement learning algorithms,
 such as [AlphaZero](https://en.wikipedia.org/wiki/AlphaZero),
-where node-ratings are performed by a neural network.
+where node quality is evaluated by a neural network.
 
 Rollout is currently performed by random simulation.
 For a simple game such as connect four, this already yields an agent of significant strength.
