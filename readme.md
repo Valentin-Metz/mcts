@@ -3,6 +3,8 @@
 An interactive [Connect Four](https://en.wikipedia.org/wiki/Connect_Four) command-line game,
 where two players attempt to be the first to connect four markings of their color.
 
+![game](game.png)
+
 ### Implementation:
 
 This implementation provides an Ai opponent,
